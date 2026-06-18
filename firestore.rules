@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isSignedIn() { return request.auth != null; }
+    
+    // Inquiries security
+    match /inquiries/{inquiryId} {
+      allow create: if isValidId(inquiryId) 
+        && request.resource.data.keys().hasAll(['name', 'email', 'phone', 'service', 'message', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.size() <= 100
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 30
+        && request.resource.data.message is string && request.resource.data.message.size() <= 2000
+        && request.resource.data.createdAt == request.time;
+      
+      // Allow read only if we set up an admin role later, for now restricted to console.
+      allow read: if false; 
+    }
+  }
+}
